@@ -231,13 +231,14 @@ static void mode_battery(void) {
     head = charging ? int32_t(p) : int32_t(span) - 1 - int32_t(p) - flowLen;
   }
 
-  for (uint32_t i = 0; i < len; i++) {
+  for (int i = 0; i < int(len); i++) {  // int index: setPixelColor(uint32_t, ...) is ambiguous on newer WLED
+    const uint32_t u = uint32_t(i);
     uint32_t c;
-    if (i < full)                 c = fillC;
-    else if (i == full && frac)   c = color_blend(empty, fillC, uint8_t(frac));
+    if (u < full)                 c = fillC;
+    else if (u == full && frac)   c = color_blend(empty, fillC, uint8_t(frac));
     else                          c = empty;
-    if (flowing && i < full) {
-      const int32_t dd = charging ? head - int32_t(i) : int32_t(i) - head;  // distance behind the head
+    if (flowing && u < full) {
+      const int32_t dd = charging ? head - i : i - head;  // distance behind the head
       if (dd >= 0 && dd < flowLen) c = color_blend(c, WHITE, uint8_t((255 - (dd * 255) / flowLen) / 3));
     }
     SEGMENT.setPixelColor(i, c);
