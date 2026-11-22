@@ -5,6 +5,11 @@
 Five effects for [WLED](https://github.com/wled/WLED) that are made for the outside of a house: garages, carports,
 driveways and porches. Each one does a single job that is otherwise hard to build from presets and playlists.
 
+[![All five effects in the LED strip simulator](docs/images/simulator.png)](https://djlex83.github.io/wled-home-fx/)
+
+**[Try them in your browser](https://djlex83.github.io/wled-home-fx/)** before you flash anything: the LED strip
+simulator lets you split a strip into segments, give each one an effect and copy the JSON to your WLED.
+
 | Effect | What you see | Typical use |
 | :-- | :-- | :-- |
 | **Advent Wreath** | Candles with a real flicker, fir green and gold sparkles between them | Advent and Christmas, counts the candles from the date |
@@ -149,6 +154,22 @@ WLED does not restart an effect that is already selected. These two effects ther
 
 So a preset with Garage Door or Notify plays from the start every time you apply it after the light was off or showed
 something else. To play the same preset twice in a row, switch the light off for a moment in between.
+
+## Simulator
+
+[`docs/index.html`](docs/index.html) is a single page without a build step. It runs online at
+<https://djlex83.github.io/wled-home-fx/> and also when you open the file locally.
+
+- Set the number of LEDs, RGB or RGBW, brightness and how many LEDs go in one row.
+- Split the strip into equal segments or set start and stop per segment. Each segment gets its own effect,
+  sliders, checkboxes, colours and palette, labelled like in the WLED app.
+- Copy the JSON and send it to `POST /json/state`, or paste the result of `/json/state` from your WLED to see your
+  current setup.
+- Next to the five effects of this repository it has a set of WLED built-in effects (Solid, Blink, Breathe, Wipe,
+  Colorloop, Rainbow, Lighthouse, Rain, Lightning, Colortwinkles, Twinklefox, Spots, both fireworks, Percent,
+  Candle Multi). Rain, Twinklefox and the fireworks are approximations.
+- Gamma 2.8 is applied to every pixel like in WLED 16. A screen cannot show the brightness of real LEDs, so take the
+  colours as an impression.
 
 ## Development
 
