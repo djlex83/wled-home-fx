@@ -2,6 +2,12 @@
 
 [![Build with WLED](https://github.com/djlex83/wled-home-fx/actions/workflows/build.yml/badge.svg)](https://github.com/djlex83/wled-home-fx/actions/workflows/build.yml)
 
+> [!NOTE]
+> **This repository is archived.** The effects compile with WLED 16, but they were never tested on real LEDs and are
+> not maintained. To try WLED's own effects in the browser, use the
+> **[LED Strip Simulator for WLED](https://djlex83.github.io/wled-strip-simulator/)**
+> ([repository](https://github.com/djlex83/wled-strip-simulator)).
+
 Five effects for [WLED](https://github.com/wled/WLED) that are made for the outside of a house: garages, carports,
 driveways and porches. Each one does a single job that is otherwise hard to build from presets and playlists.
 
