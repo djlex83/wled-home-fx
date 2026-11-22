@@ -1,0 +1,11 @@
+{
+  "name": "wled-home-fx",
+  "version": "0.1.0",
+  "description": "WLED effects for houses, driveways and garages: Advent Wreath, Runway, Battery, Garage Door, Notify",
+  "keywords": "wled, usermod, led, effects",
+  "license": "EUPL-1.2",
+  "repository": { "type": "git", "url": "https://github.com/djlex83/wled-home-fx.git" },
+  "frameworks": "arduino",
+  "platforms": "espressif32, espressif8266",
+  "build": { "libArchive": false }
+}

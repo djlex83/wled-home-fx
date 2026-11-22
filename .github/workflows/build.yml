@@ -1,0 +1,64 @@
+name: Build with WLED
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: WLED ${{ matrix.wled }} · ${{ matrix.env }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wled: [v16.0.1]
+        env: [esp32dev, nodemcuv2]
+    steps:
+      - name: Check out this usermod
+        uses: actions/checkout@v4
+        with:
+          path: wled-home-fx
+
+      - name: Check out WLED ${{ matrix.wled }}
+        uses: actions/checkout@v4
+        with:
+          repository: wled/WLED
+          ref: ${{ matrix.wled }}
+          path: WLED
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PlatformIO
+        run: pip install -r WLED/requirements.txt
+
+      - name: Add the usermod to the build
+        working-directory: WLED
+        run: |
+          {
+            echo "[platformio]"
+            echo "default_envs = ${{ matrix.env }}"
+            echo "[env:${{ matrix.env }}]"
+            echo "custom_usermods ="
+            echo "  symlink://${{ github.workspace }}/wled-home-fx"
+          } > platformio_override.ini
+          cat platformio_override.ini
+
+      - name: Build firmware
+        working-directory: WLED
+        run: |
+          npm ci
+          pio run -e ${{ matrix.env }}
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: wled-home-fx-${{ matrix.wled }}-${{ matrix.env }}
+          path: WLED/build_output/**/*.bin
+          if-no-files-found: warn
