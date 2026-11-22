@@ -51,12 +51,14 @@ static uint32_t settingsSignature() {
 // Milliseconds since the run started. A new run starts when the effect is selected, when one of its
 // settings or colours changes, or when the segment or the whole light is switched on again. WLED itself
 // does not restart an effect that is already selected, so this makes "apply preset" behave like
-// "play it now". Turning the light off is seen as brightness 0: WLED keeps calling the effect for 600 ms
-// before it stops the strip. A pause of the loop (frozen segment, slow file write) does not restart the
+// "play it now". Turning the light off is seen through the requested brightness (bri == 0) and the output
+// brightness, which WLED keeps rendering for 600 ms before it stops the strip. A pause of the loop (frozen segment, slow file write) does not restart the
 // run, the effect simply continues where the elapsed time says.
 static uint32_t oneShotElapsed(OneShot *d) {
   const uint32_t now = strip.now;
-  const bool dark = !SEGMENT.on || strip.getBrightness() == 0;
+  // bri is the requested brightness: it is 0 as soon as the light is switched off, while the output still fades.
+  // Without it, a quick off/on during the fade would never reach brightness 0 and not restart the run.
+  const bool dark = !SEGMENT.on || bri == 0 || strip.getBrightness() == 0;
   const uint32_t sig = settingsSignature();
   if (SEGENV.call == 0 || sig != d->sig || (d->armed && !dark)) {
     d->start = now;
