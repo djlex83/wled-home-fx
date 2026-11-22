@@ -78,7 +78,7 @@ Use the segment's **reverse** option to change the direction.
 | Control | Meaning | Default |
 | :-- | :-- | :-- |
 | Strobe speed (`sx`) | How fast the strobe runs | 170 |
-| Light spacing (`ix`) | LEDs from one light to the next (2 … 31) | 80 |
+| Light spacing (`ix`) | About this many LEDs from one light to the next (2 … 31). The lights are spread evenly, so the first one starts at the beginning and the last one ends at the end of the segment | 80 |
 | Edge brightness (`c1`) | Brightness of the steady edge lights | 70 |
 | Flash length (`c2`) | How many lights the afterglow of the strobe covers | 96 |
 | Threshold (`o1`) | Last light steady in colour 3 | on |
@@ -93,7 +93,7 @@ A level gauge. Set the level with the **Level %** slider or from home automation
 
 | Control | Meaning | Default |
 | :-- | :-- | :-- |
-| Speed (`sx`) | Speed of the bar and of the flow | 64 |
+| Speed (`sx`) | Speed of the bar and of the flow. An empty bar fills in about 6 s (0) to 0.4 s (255) | 64 |
 | Level % (`ix`) | Fill level in percent | 72 |
 | Low warning (`c1`) | The bar pulses at or below this level (0 … 99 %) | 26 (= 10 %) |
 | Flow length (`c2`) | Length of the charging / discharging flow | 96 |
@@ -148,11 +148,10 @@ Colours: **Message**, **Steady**, **Message 2**.
 WLED does not restart an effect that is already selected. These two effects therefore restart by themselves when
 
 - the effect is selected,
-- the segment or the whole light is switched on again,
-- one of their settings or colours changes, or
-- the effect did not run for more than a second.
+- the segment or the whole light is switched on again, or
+- one of their settings or colours changes.
 
-So a preset with Garage Door or Notify plays from the start every time you apply it after the light was off or showed
+A short pause of WLED, for example while it saves a preset, does not restart them. So a preset with Garage Door or Notify plays from the start every time you apply it after the light was off or showed
 something else. To play the same preset twice in a row, switch the light off for a moment in between.
 
 ## Simulator

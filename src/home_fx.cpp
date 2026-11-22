@@ -34,7 +34,6 @@ static inline uint8_t tri8(uint8_t x) { return x < 128 ? x << 1 : 255 - ((x - 12
 // State for effects that play once and then hold (Garage Door, Notify).
 struct OneShot {
   uint32_t start;     // strip.now when the run started
-  uint32_t lastCall;  // strip.now of the previous frame
   uint32_t sig;       // fingerprint of the settings of the current run
   uint8_t  armed;     // segment or light was dark: start again when it comes back
 };
@@ -50,20 +49,21 @@ static uint32_t settingsSignature() {
 }
 
 // Milliseconds since the run started. A new run starts when the effect is selected, when one of its
-// settings or colours changes, when the segment or the whole light is switched on again, or when the
-// effect did not run for more than a second. WLED itself does not restart an effect that is already
-// selected, so this makes "apply preset" behave like "play it now".
+// settings or colours changes, or when the segment or the whole light is switched on again. WLED itself
+// does not restart an effect that is already selected, so this makes "apply preset" behave like
+// "play it now". Turning the light off is seen as brightness 0: WLED keeps calling the effect for 600 ms
+// before it stops the strip. A pause of the loop (frozen segment, slow file write) does not restart the
+// run, the effect simply continues where the elapsed time says.
 static uint32_t oneShotElapsed(OneShot *d) {
   const uint32_t now = strip.now;
   const bool dark = !SEGMENT.on || strip.getBrightness() == 0;
   const uint32_t sig = settingsSignature();
-  if (SEGENV.call == 0 || sig != d->sig || now - d->lastCall > 1000 || (d->armed && !dark)) {
+  if (SEGENV.call == 0 || sig != d->sig || (d->armed && !dark)) {
     d->start = now;
     d->sig = sig;
     d->armed = 0;
   }
   if (dark) d->armed = 1;
-  d->lastCall = now;
   return now - d->start;
 }
 
@@ -109,7 +109,8 @@ static void mode_advent(void) {
   if (width < 1) width = 1;
 
   const uint32_t flame   = SEGCOLOR(0);
-  const uint32_t ember   = RGBW32(R(flame), G(flame) / 4, 0, 0);
+  const uint8_t  emberR  = R(flame) > W(flame) ? R(flame) : W(flame);  // a white-only flame dips to red, too
+  const uint32_t ember   = RGBW32(emberR, G(flame) / 4, 0, 0);
   const uint32_t wreath  = SEGCOLOR(1) ? SEGCOLOR(1) : RGBW32(0, 48, 10, 0);
   const uint32_t sparkle = SEGCOLOR(2) ? SEGCOLOR(2) : RGBW32(255, 150, 30, 0);
   const uint32_t t = (strip.now * (16 + SEGMENT.speed)) >> 6;
@@ -157,9 +158,11 @@ static const char _data_FX_MODE_ADVENT[] PROGMEM =
 
 static void mode_runway(void) {
   const int len = SEGLEN;
-  const int spacing = 2 + ((SEGMENT.intensity * 30) >> 8);   // 2..31 LEDs between lights
-  const int lights = (len - 1) / spacing + 1;
-  const int lampW = 1 + (spacing >= 10) + (spacing >= 20);
+  const int spacing = 2 + ((SEGMENT.intensity * 30) >> 8);   // about 2..31 LEDs between lights
+  int lampW = 1 + (spacing >= 10) + (spacing >= 20);
+  if (lampW > len) lampW = len;
+  // the lights are spread evenly: the first starts at the beginning, the last ends at the end of the segment
+  const int lights = (len - lampW + spacing / 2) / spacing + 1;
   const uint32_t msPerLight = 20 + (((255 - SEGMENT.speed) * 140) >> 8);
   const uint32_t cycle = uint32_t(lights) * msPerLight + 300 + msPerLight * 2;
   const uint32_t pos256 = ((strip.now % cycle) * 256) / msPerLight;  // strobe head in 1/256 light
@@ -181,8 +184,8 @@ static void mode_runway(void) {
         c = color_blend(c, strobe, (f * f) >> 8);
       }
     }
-    const int p = k * spacing;
-    for (int w = 0; w < lampW && p + w < len; w++) SEGMENT.setPixelColor(p + w, c);
+    const int p = lights > 1 ? (k * (len - lampW)) / (lights - 1) : len - lampW;  // a single light is the threshold
+    for (int w = 0; w < lampW; w++) SEGMENT.setPixelColor(p + w, c);
   }
 }
 static const char _data_FX_MODE_RUNWAY[] PROGMEM =
@@ -196,7 +199,10 @@ static const char _data_FX_MODE_RUNWAY[] PROGMEM =
 /*  red-yellow-green. Colour 2 is the empty part.                                                    */
 /* ------------------------------------------------------------------------------------------------ */
 
-struct BatteryData { uint32_t shown; };  // displayed fill in 1/256 LED
+struct BatteryData {
+  uint32_t shown;  // displayed fill in 1/256 LED
+  uint32_t last;   // strip.now of the previous frame
+};
 
 static void mode_battery(void) {
   if (!SEGENV.allocateData(sizeof(BatteryData))) { fallbackStatic(); return; }
@@ -205,7 +211,12 @@ static void mode_battery(void) {
   const uint32_t len = SEGLEN;
   const uint32_t level = SEGMENT.intensity > 100 ? 100 : SEGMENT.intensity;
   const uint32_t target = (len * 256 * level) / 100;
-  const uint32_t step = (len * (16 + SEGMENT.speed)) >> 4;
+  // the bar moves by time, not by frame: an empty bar fills in about 6 s (sx = 0) to 0.4 s (sx = 255)
+  uint32_t dt = SEGENV.call == 0 ? 0 : strip.now - d->last;
+  if (dt > 250) dt = 250;  // no jump after a pause
+  d->last = strip.now;
+  uint32_t step = (len * (16 + SEGMENT.speed) * dt) / 384;
+  if (step == 0) step = 1;
   if (d->shown < target)      d->shown = (d->shown + step < target) ? d->shown + step : target;
   else if (d->shown > target) d->shown = (d->shown > target + step) ? d->shown - step : target;
 
@@ -267,7 +278,7 @@ static void mode_garage_door(void) {
 
   const int len = SEGLEN;
   const int span = both ? (len + 1) / 2 : len;
-  const uint32_t filled256 = (uint32_t(span) * 256 * open) >> 16;
+  const uint32_t filled256 = (uint32_t(span) * open) >> 8;  // fill in 1/256 LED, no overflow for long segments
   const int filled = filled256 >> 8;
 
   const uint32_t edgeC  = SEGCOLOR(0);

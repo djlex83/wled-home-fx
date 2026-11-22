@@ -260,7 +260,7 @@ add('Advent Wreath', 'Advent Wreath@Flicker speed,Flicker depth,Lit candles,Cand
   let lit = (sp.c1 * (candles + 1)) >> 8; if (sp.o1) lit = Math.min(adventToday(), candles);
   const slot = Math.floor(L / candles), off = Math.floor((L - slot * candles) / 2);
   let width = (slot * (16 + ((sp.c2 * 3) >> 2))) >> 8; if (width < 1) width = 1;
-  const flame = sp.col[0], ember = [flame[0], Math.floor(flame[1] / 4), 0, 0];
+  const flame = sp.col[0], ember = [Math.max(flame[0], flame[3] || 0), Math.floor(flame[1] / 4), 0, 0];
   const wreath = isBlack(sp.col[1]) ? [0, 48, 10, 0] : sp.col[1], sparkle = isBlack(sp.col[2]) ? [255, 150, 30, 0] : sp.col[2];
   const tt0 = Math.floor(t * (16 + sp.sx) / 64);
   for (let i = 0; i < L; i++) {
@@ -281,8 +281,8 @@ add('Advent Wreath', 'Advent Wreath@Flicker speed,Flicker depth,Lit candles,Cand
   }
 }, { own: true });
 add('Runway', 'Runway@Strobe speed,Light spacing,Edge brightness,Flash length,,Threshold,Edge lights;Strobe,Edge,Threshold;;1;sx=170,ix=80,c1=70,c2=96,o1=1,o2=1', (s, t) => {
-  const sp = s.sp, L = s.L, spacing = 2 + ((sp.ix * 30) >> 8), lights = Math.floor((L - 1) / spacing) + 1;
-  const lampW = 1 + (spacing >= 10) + (spacing >= 20), ms = 20 + (((255 - sp.sx) * 140) >> 8);
+  const sp = s.sp, L = s.L, spacing = 2 + ((sp.ix * 30) >> 8), lampW = Math.min(L, 1 + (spacing >= 10) + (spacing >= 20));
+  const lights = Math.floor((L - lampW + (spacing >> 1)) / spacing) + 1, ms = 20 + (((255 - sp.sx) * 140) >> 8);
   const cycle = lights * ms + 300 + ms * 2, pos256 = Math.floor((t % cycle) * 256 / ms), flash256 = 64 + sp.c2 * 3;
   const edge = fadeC(isBlack(sp.col[1]) ? [255, 150, 40, 0] : sp.col[1], sp.c1), thr = isBlack(sp.col[2]) ? [0, 255, 40, 0] : sp.col[2];
   fill(s, BLACK);
@@ -290,12 +290,14 @@ add('Runway', 'Runway@Strobe speed,Light spacing,Edge brightness,Flash length,,T
     let c = sp.o2 ? edge : BLACK;
     if (sp.o1 && k === lights - 1) c = thr;
     else { const d = pos256 - k * 256; if (d >= 0 && d < flash256) { const f = 255 - Math.floor(d * 255 / flash256); c = mix(c, sp.col[0], ((f * f) >> 8) / 255); } }
-    for (let w = 0; w < lampW; w++) put(s, k * spacing + w, c);
+    const p = lights > 1 ? Math.floor(k * (L - lampW) / (lights - 1)) : L - lampW;
+    for (let w = 0; w < lampW; w++) put(s, p + w, c);
   }
 }, { own: true });
 add('Battery', 'Battery@Speed,Level %,Low warning,Flow length,,Charging,Discharging,Use palette;,Empty;!;1;sx=64,ix=72,c1=26,c2=96', (s, t) => {
-  const sp = s.sp, L = s.L, st = s.st; if (st.shown === undefined) st.shown = 0;
-  const level = Math.min(100, sp.ix), target = Math.floor(L * 256 * level / 100), step = (L * (16 + sp.sx)) >> 4;
+  const sp = s.sp, L = s.L, st = s.st; if (st.shown === undefined) { st.shown = 0; st.last = t; }
+  const dt = Math.max(0, Math.min(250, t - st.last)); st.last = t;
+  const level = Math.min(100, sp.ix), target = Math.floor(L * 256 * level / 100), step = Math.max(1, Math.floor(L * (16 + sp.sx) * dt / 384));
   if (st.shown < target) st.shown = Math.min(target, st.shown + step); else if (st.shown > target) st.shown = Math.max(target, st.shown - step);
   let fc = sp.o3 ? palColor(sp, Math.floor(level * 255 / 100))
     : level < 50 ? mix([255, 0, 0, 0], [255, 170, 0, 0], Math.floor(level * 255 / 50) / 255) : mix([255, 170, 0, 0], [0, 255, 30, 0], Math.floor((level - 50) * 255 / 50) / 255);
@@ -313,7 +315,7 @@ add('Battery', 'Battery@Speed,Level %,Low warning,Flow length,,Charging,Discharg
 add('Garage Door', 'Garage Door@Blink speed,Travel time,Edge width,,,Closing,From both ends,Warning stripes;Edge,Door,Ahead;;1;sx=180,ix=95,c1=24', (s, t) => {
   const sp = s.sp, L = s.L, travel = 3000 + Math.floor(sp.ix * 57000 / 255), prog = t >= travel ? 65535 : Math.floor(t * 65535 / travel);
   const closing = !!sp.o1, both = !!sp.o2, stripes = !!sp.o3, open = closing ? 65535 - prog : prog;
-  const span = both ? Math.floor((L + 1) / 2) : L, filled256 = Math.floor(span * 256 * open / 65536), filled = filled256 >> 8;
+  const span = both ? Math.floor((L + 1) / 2) : L, filled256 = Math.floor(span * open / 256), filled = filled256 >> 8;
   const edgeC = sp.col[0], doorC = isBlack(sp.col[1]) ? fadeC(sp.col[0], 48) : sp.col[1], aheadC = sp.col[2];
   const moving = t < travel, edgeW = 1 + (sp.c1 >> 3), bp = 200 + (255 - sp.sx) * 4, blinkOn = (t % bp) < bp / 2, shift = Math.floor(t / 60) & 0xFFFF;
   for (let i = 0; i < L; i++) {
